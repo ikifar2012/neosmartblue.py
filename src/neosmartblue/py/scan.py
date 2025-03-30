@@ -1,10 +1,11 @@
 import asyncio
+import json
 from typing import Dict, List, Optional, Any
 from bleak import BleakScanner
 
 from .parse_status import parse_status_data
 
-async def scan_for_devices(timeout: float = 5.0) -> List[Dict[str, Any]]:
+async def scan_for_devices(timeout: float = 15.0) -> List[Dict[str, Any]]:
     """
     Scan for Neo Smart Blinds devices and return their advertisement data.
     
@@ -17,27 +18,33 @@ async def scan_for_devices(timeout: float = 5.0) -> List[Dict[str, Any]]:
     devices = []
     
     def detection_callback(device, advertisement_data):
-        # Check if this is a Neo Smart Blinds device
-        if device.name and "NEO" in device.name.upper():
-            # Get manufacturer data if available
+        device_address = device.address  # Define device_address
+        
+        if device.name and (device.name.startswith("NEO-") or device.name.startswith("NMB-")):
             if advertisement_data.manufacturer_data:
-                for company_id, data in advertisement_data.manufacturer_data.items():
-                    if len(data) >= 7:  # Ensure enough data for status parsing
-                        try:
-                            status = parse_status_data(data)
-                            devices.append({
-                                "address": device.address,
-                                "name": device.name,
-                                "rssi": device.rssi,
-                                "status": status,
-                                "raw_data": data.hex().upper(),
-                            })
-                        except Exception as e:
-                            print(f"Failed to parse status for {device.address}: {e}")
-    
-    scanner = BleakScanner(detection_callback=detection_callback)
-    await scanner.start()
-    await asyncio.sleep(timeout)
-    await scanner.stop()
+                manufacturer_data = advertisement_data.manufacturer_data  # Extract manufacturer data   
+                byte_data = manufacturer_data[2407]  # Get the bytes value
+                # Convert to bytearray
+                status_payload = bytearray(byte_data)
+                if status_payload:
+                    status = parse_status_data(status_payload)
+                    devices.append({
+                            "address": device_address,
+                            "name": device.name,
+                            "status": status
+                        })
+            else:
+                # If no status data is found, still add the device with empty status
+                devices.append({
+                        "address": device_address,
+                        "name": device.name,
+                        "status": {}
+                        })
+   
+        # We don't need to return anything as we're already adding to devices list
+        
+    scanner = await BleakScanner.discover(return_adv=True, timeout=timeout)
+    for device_address, (ble_device, adv_data) in scanner.items():
+        detection_callback(ble_device, adv_data)
     
     return devices

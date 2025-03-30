@@ -14,17 +14,23 @@ pip install neosmartblue-py
 
 ```python
 import asyncio
-from neosmartblue.py import scan_for_devices
+from src.neosmartblue.py import scan_for_devices
 
 async def main():
     # Scan for nearby Neo Smart Blinds devices
-    devices = await scan_for_devices(timeout=5.0)
+    devices = await scan_for_devices(timeout=15.0)
+    if not devices:
+        print("No devices found.")
+        return
     
     for device in devices:
-        print(f"Found device: {device['name']} ({device['address']})")
-        print(f"  Position: {device['status']['current_position']}%")
-        print(f"  Battery: {device['status']['battery_level']}%")
-        print(f"  Moving: {'Yes' if device['status']['is_moving'] else 'No'}")
+        print(f"Device Address: {device['address']}")
+        print(f"Device Name: {device['name']}")
+        print("Status:")
+        for key, value in device['status'].items():
+            print(f"  {key}: {value}")
+        print()
+
 
 asyncio.run(main())
 ```
