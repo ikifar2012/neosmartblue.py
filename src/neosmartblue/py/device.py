@@ -1,5 +1,6 @@
 import asyncio
 from bleak import BleakClient
+from .parse_status import parse_status_data
 
 from .const import _RX_UUID, _TX_UUID
 from .generate_commands import (
@@ -103,7 +104,11 @@ class BlueLinkDevice:
         def notification_handler(sender: int, received_data: bytes):
             nonlocal data
             print("Notification from", sender, ":", received_data.hex().upper())
-            data = received_data
+            # extract the status payload from the received data
+            status_payload = received_data[4:9]
+            status = parse_status_data(status_payload)
+            data = status
+            print("Parsed status:", status)
 
         await self.client.start_notify(_TX_UUID, notification_handler)
         await asyncio.sleep(timeout)

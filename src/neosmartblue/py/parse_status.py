@@ -22,8 +22,11 @@ def parse_status_data(status_data: bytes) -> dict:
     Returns:
         dict: Parsed status values.
     """
-    if len(status_data) != 5:
-        raise ValueError("Status data must be exactly 5 bytes")
+    # Check if the status_data is exactly 5 bytes long
+    # If not, raise a ValueError
+    status_data_length = len(status_data)
+    if status_data_length != 5:
+        raise ValueError(f"Status data must be exactly 5 bytes long, but got {status_data_length} bytes.")
     
     battery_level = status_data[0]
     target_position = status_data[1]

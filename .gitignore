@@ -57,3 +57,5 @@ poetry.lock
 
 # macOS
 .DS_Store
+# User specific files
+debug/*
