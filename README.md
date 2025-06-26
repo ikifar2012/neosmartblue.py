@@ -14,7 +14,7 @@ pip install neosmartblue.py
 
 ```python
 import asyncio
-from src.neosmartblue.py import scan_for_devices
+from neosmartblue.py import scan_for_devices
 
 async def main():
     # Scan for nearby Neo Smart Blinds devices
