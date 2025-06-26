@@ -5,7 +5,7 @@ A Python library for controlling Neo Smart Blinds via BlueLink Bluetooth connect
 ## Installation
 
 ```bash
-pip install neosmartblue-py
+pip install neosmartblue.py
 ```
 
 ## Usage
