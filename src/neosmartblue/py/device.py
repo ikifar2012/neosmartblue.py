@@ -1,5 +1,6 @@
 import asyncio
 from bleak import BleakClient
+from bleak.backends.characteristic import BleakGATTCharacteristic
 from .parse_status import parse_status_data
 
 from .const import _RX_UUID, _TX_UUID
@@ -89,7 +90,7 @@ class BlueLinkDevice:
         command = generate_ping_command()
         await self.send_command(command)
     
-    async def receive_data(self, timeout: float = 5.0) -> bytes:
+    async def receive_data(self, timeout: float = 5.0):
         """
         Listen for a notification on the TX characteristic.
         
@@ -97,18 +98,26 @@ class BlueLinkDevice:
             timeout (float): The number of seconds to wait for a notification.
             
         Returns:
-            bytes: The data received, or None if no data is received within the timeout.
+            Parsed status object (type depends on parse_status_data implementation), or None if no data is received within the timeout.
         """
         data = None
 
-        def notification_handler(sender: int, received_data: bytes):
+        def notification_handler(sender: BleakGATTCharacteristic, received_data: bytearray):
             nonlocal data
-            print("Notification from", sender, ":", received_data.hex().upper())
-            # extract the status payload from the received data
-            status_payload = received_data[4:9]
-            status = parse_status_data(status_payload)
-            data = status
-            print("Parsed status:", status)
+            # sender is a BleakGATTCharacteristic object per Bleak's callback signature
+            try:
+                printable = bytes(received_data)
+                print("Notification from characteristic", getattr(sender, 'uuid', sender), ":", printable.hex().upper())
+                # ensure payload long enough before slicing
+                if len(printable) >= 9:
+                    status_payload = printable[4:9]
+                    status = parse_status_data(status_payload)
+                    data = status
+                    print("Parsed status:", status)
+                else:
+                    print("Received data too short to parse status payload (len=", len(printable), ")")
+            except Exception as e:
+                print("Error handling notification:", e)
 
         await self.client.start_notify(_TX_UUID, notification_handler)
         await asyncio.sleep(timeout)
