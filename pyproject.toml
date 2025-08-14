@@ -1,6 +1,6 @@
 [project]
 name = "neosmartblue.py"
-version = "0.1.0"
+version = "0.1.1"
 description = "A Python library for controlling Neo Smart Blinds via BlueLink Bluetooth connection"
 authors = [
     {name = "ikifar2012", email = "ikifar2012@users.noreply.github.com"}
