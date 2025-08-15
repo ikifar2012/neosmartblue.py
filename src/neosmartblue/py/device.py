@@ -1,4 +1,5 @@
 import asyncio
+from typing import Optional, Dict, Any
 from bleak import BleakClient
 from bleak.backends.characteristic import BleakGATTCharacteristic
 from .parse_status import parse_status_data
@@ -90,17 +91,16 @@ class BlueLinkDevice:
         command = generate_ping_command()
         await self.send_command(command)
     
-    async def receive_data(self, timeout: float = 5.0):
-        """
-        Listen for a notification on the TX characteristic.
-        
+    async def receive_data(self, timeout: float = 5.0) -> Optional[Dict[str, Any]]:
+        """Listen for a notification on the TX characteristic.
+
         Parameters:
             timeout (float): The number of seconds to wait for a notification.
-            
+
         Returns:
-            Parsed status object (type depends on parse_status_data implementation), or None if no data is received within the timeout.
+            Optional[Dict[str, Any]]: Parsed status dict from parse_status_data, or None if timeout/no notification.
         """
-        data = None
+        data: Optional[Dict[str, Any]] = None
 
         def notification_handler(sender: BleakGATTCharacteristic, received_data: bytearray):
             nonlocal data
