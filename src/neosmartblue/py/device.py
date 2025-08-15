@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import Optional, Dict, Any
 from bleak import BleakClient
 from bleak.backends.characteristic import BleakGATTCharacteristic
@@ -100,26 +101,43 @@ class BlueLinkDevice:
         Returns:
             Optional[Dict[str, Any]]: Parsed status dict from parse_status_data, or None if timeout/no notification.
         """
+        logger = logging.getLogger(__name__)
         data: Optional[Dict[str, Any]] = None
+        data_event = asyncio.Event()
 
         def notification_handler(sender: BleakGATTCharacteristic, received_data: bytearray):
             nonlocal data
-            # sender is a BleakGATTCharacteristic object per Bleak's callback signature
             try:
                 printable = bytes(received_data)
-                print("Notification from characteristic", getattr(sender, 'uuid', sender), ":", printable.hex().upper())
-                # ensure payload long enough before slicing
+                logger.info(
+                    "Notification from characteristic %s: %s",
+                    getattr(sender, 'uuid', sender),
+                    printable.hex().upper(),
+                )
                 if len(printable) >= 9:
                     status_payload = printable[4:9]
                     status = parse_status_data(status_payload)
                     data = status
-                    print("Parsed status:", status)
+                    logger.info("Parsed status: %s", status)
+                    data_event.set()
                 else:
-                    print("Received data too short to parse status payload (len=", len(printable), ")")
-            except Exception as e:
-                print("Error handling notification:", e)
+                    logger.info(
+                        "Received data too short to parse status payload (len=%d)",
+                        len(printable),
+                    )
+            except Exception:  # pragma: no cover - defensive
+                logger.exception("Error handling notification")
 
         await self.client.start_notify(_TX_UUID, notification_handler)
-        await asyncio.sleep(timeout)
-        await self.client.stop_notify(_TX_UUID)
-        return data
+        try:
+            try:
+                await asyncio.wait_for(data_event.wait(), timeout=timeout)
+            except asyncio.TimeoutError:
+                # No data within timeout; return None
+                pass
+            return data
+        finally:
+            try:
+                await self.client.stop_notify(_TX_UUID)
+            except Exception:  # pragma: no cover - defensive cleanup
+                logger.exception("Failed to stop notifications")
